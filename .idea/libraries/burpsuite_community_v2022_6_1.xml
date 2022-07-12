@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="burpsuite_community_v2022.6.1">
+    <CLASSES>
+      <root url="jar://D:/CTF/BurpSuiteCommunity/burpsuite_community_v2022.6.1.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://D:/CTF/BurpSuiteCommunity/burpsuite_community_v2022.6.1.jar!/resources/API" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://D:/CTF/BurpSuiteCommunity/burpsuite_community_v2022.6.1.jar!/resources/API" />
+    </SOURCES>
+  </library>
+</component>
