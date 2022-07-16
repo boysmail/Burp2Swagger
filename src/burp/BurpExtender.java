@@ -1,15 +1,20 @@
 package burp;
 
+import com.google.gson.GsonBuilder;
 import com.sun.net.httpserver.*;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.Writer;
 import java.net.InetSocketAddress;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 
 import com.google.gson.Gson;
@@ -130,22 +135,23 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
             //}
 
-            jsonHelper.add(helpers.analyzeRequest(messageInfo));
+            // THIS WAS UNCOMMENTED
+            //jsonHelper.add(helpers.analyzeRequest(messageInfo));
             //textArea.append(helpers.analyzeRequest(messageInfo).getUrl().getHost() + "\n");
         }
         else if (!messageIsRequest && callbacks.isInScope(RequestUrl)){
             // debug
-            var l = helpers.analyzeRequest(messageInfo.getResponse()).getParameters();
-            var ll = helpers.analyzeRequest(messageInfo.getRequest()).getParameters();
+            var responseParams = helpers.analyzeRequest(messageInfo.getResponse()).getParameters();
+            var requestParams = helpers.analyzeRequest(messageInfo.getRequest()).getParameters();
             stdout.println("response ----------");
-            for (var i = 0;i<l.size();i++){
-                stdout.println(l.get(i).getName() + " = "+ l.get(i).getValue() + " pb " + l.get(i).getType());
+            for (IParameter responseParam : responseParams) {
+                stdout.println(responseParam.getName() + " = " + responseParam.getValue() + " pb " + responseParam.getType());
             }
             //stdout.println(helpers.analyzeResponse(messageInfo.getResponse()));
             stdout.println("----------");
             stdout.println("request ----------");
-            for (var i = 0;i<ll.size();i++){
-                stdout.println(ll.get(i).getName() + " = "+ ll.get(i).getValue() + " pb " + ll.get(i).getType());
+            for (IParameter requestParam : requestParams) {
+                stdout.println(requestParam.getName() + " = " + requestParam.getValue() + " pb " + requestParam.getType());
             }
 
             stdout.println("----------");
@@ -154,6 +160,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             stdout.println("got params in request " + helpers.analyzeRequest(messageInfo.getRequest()).getParameters());
             stdout.println("response "+ helpers.analyzeResponse(messageInfo.getResponse()).getStatusCode());
 
+            // Todo: check ending of each endpoint to blacklist .js .css etc ()
             jsonHelper.add2(messageInfo,helpers);
         }
 
