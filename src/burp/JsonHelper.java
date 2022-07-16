@@ -182,7 +182,7 @@ public class JsonHelper {
     public void SaveToFile(){
         try{
             //System.out.println("Writing to file");
-            Writer writer = Files.newBufferedWriter(Paths.get("output.json"));
+            Writer writer = Files.newBufferedWriter(Paths.get("burp2swagger_out/output.json"));
             gson.toJson(output, writer);
             writer.close();
         }

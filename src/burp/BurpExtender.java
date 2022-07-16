@@ -1,23 +1,22 @@
 package burp;
 
-import com.google.gson.GsonBuilder;
+
 import com.sun.net.httpserver.*;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.net.InetSocketAddress;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtensionStateListener{
@@ -30,8 +29,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     private JTextArea textArea = new JTextArea("",10,10);
 
     private JsonObject obj;
-    private HttpServer server = SimpleFileServer.createFileServer(new InetSocketAddress(8090),
-            Path.of(System.getProperty("user.dir") + "/dist/"), SimpleFileServer.OutputLevel.VERBOSE);
+    private HttpServer server;
     private JsonHelper jsonHelper;
 
 
@@ -97,6 +95,15 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
         stdout.println(System.getProperty("user.dir"));
 
+        File f = new File("burp2swagger_out/index.html");
+        if (!f.exists() && f.getParentFile().mkdirs()){
+            DropHtml();
+        }
+
+
+
+        server = SimpleFileServer.createFileServer(new InetSocketAddress(8090),
+                Path.of(System.getProperty("user.dir") + "/burp2swagger_out/"), SimpleFileServer.OutputLevel.VERBOSE);
         try {
             server.start();
             stdout.println("launching server for swagger on port 8090");
@@ -179,6 +186,71 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
     public IExtensionHelpers getHelpers(){
         return helpers;
+    }
+    public void DropHtml() {
+        Writer writer;
+        try {
+            writer = Files.newBufferedWriter(Paths.get("burp2swagger_out/index.html"));
+            writer.write("""
+                    <!DOCTYPE html>
+                    <html lang="en">
+                      <head>
+                        <meta charset="UTF-8">
+                        <title>Swagger UI</title>
+                        <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.12.0/swagger-ui.css" />
+                        <style>
+                        html {
+                            box-sizing: border-box;
+                            overflow: -moz-scrollbars-vertical;
+                            overflow-y: scroll;
+                        }
+                        
+                        *,
+                        *:before,
+                        *:after {
+                            box-sizing: inherit;
+                        }
+                        
+                        body {
+                            margin: 0;
+                            background: #fafafa;
+                        }
+                        </style>
+                        <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAkFBMVEUAAAAQM0QWNUYWNkYXNkYALjoWNUYYOEUXN0YaPEUPMUAUM0QVNUYWNkYWNUYWNUUWNUYVNEYWNkYWNUYWM0eF6i0XNkchR0OB5SwzZj9wyTEvXkA3az5apTZ+4C5DgDt31C9frjU5bz5uxTI/eDxzzjAmT0IsWUEeQkVltzR62S6D6CxIhzpKijpJiDpOkDl4b43lAAAAFXRSTlMAFc304QeZ/vj+ECB3xKlGilPXvS2Ka/h0AAABfklEQVR42oVT2XaCMBAdJRAi7pYJa2QHxbb//3ctSSAUPfa+THLmzj4DBvZpvyauS9b7kw3PWDkWsrD6fFQhQ9dZLfVbC5M88CWCPERr+8fLZodJ5M8QJbjbGL1H2M1fIGfEm+wJN+bGCSc6EXtNS/8FSrq2VX6YDv++XLpJ8SgDWMnwqznGo6alcTbIxB2CHKn8VFikk2mMV2lEnV+CJd9+jJlxXmMr5dW14YCqwgbFpO8FNvJxwwM4TPWPo5QalEsRMAcusXpi58/QUEWPL0AK1ThM5oQCUyXPoPINkdd922VBw4XgTV9zDGWWFrgjIQs4vwvOg6xr+6gbCTqE+DYhlMGX0CF2OknK5gQ2JrkDh/W6TOEbYDeVecKbJtyNXiCfGmW7V93J2hDus1bDfhxWbIZVYDXITA7Lo6E0Ktgg9eB4KWuR44aj7ppBVPazhQH7/M/KgWe9X1qAg8XypT6nxIMJH+T94QCsLvj29IYwZxyO9/F8vCbO9tX5/wDGjEZ7vrgFZwAAAABJRU5ErkJggg==" sizes="32x32" />
+                        <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAABNVBMVEVisTRhsTReqzVbpTVXoDdVnTdSlzhRljgvXkAuXUAtWkErV0EzZj40Zj85bz0lTkMkTUMkT0MmTUIkS0IjTEIhSUMkS0IkTEIkTUIlTUIkTkMlTkMcQUQcP0UfQ0QdQ0QfREQgRUMiSUMiSUMjSkInU0EkTEMmUEEiR0IiSEMpVkErWT8kTUElTUIUNkYVNEQVMkcRM0QSNUYQMUIMMUkVK0AAJEkAM00AMzMAAAAAAACF6i2E6SyD6CyC5i2B5Sx/4i6A4S593S583S520jB00DByyjFxyTFwyDFvxjJtxTFtxDFswzJrwDJqvzJpvjNouzNoujNnuDNLjTlKijpKiTpEfztDfzxAeT0+dz05bj44bT44bj82aj81aD8zZT8bPUUbPkUcP0UcPUUeQ0UfREQgRkRgJREvAAAAO3RSTlP09PX19vX39u7u7/Dq6ufh4eDg4+Pf3Nvb2tnY2NvPv7y6rKupqaGZlpSOiYWETDEkHh0fFQwHCgUBAAcHrskAAADYSURBVHjaPc/ZLkNRGIbhz26KjVJpqSKGtjHPc9a7W7OEEhtBjDWUO3XghqQSwVrNTp+j///OXhlrLpdJdg9MLblbxqwPd5RLUDpOjK66YWMwTqRpaM0OhZbo3dskljea9+HyAevxHtoWVAjhfQtr5w3CSfUE8BrgvEDQpxRc3eyfH5wenlQuIO39Sb9x/8uv+bXvmPSjbABPRZznIkGvxkOo7mJtV+FsQsutcFvBuruG9kWZMY+G5pzxlMp/KPKZSUs2cLrzyMWVEyP1OGtlNpvs6p+p5/8DzUo5hMDku9EAAAAASUVORK5CYII=" sizes="16x16" />
+                      </head>
+                                        
+                      <body>
+                        <div id="swagger-ui"></div>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.12.0/swagger-ui-bundle.js" charset="UTF-8"> </script>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.12.0/swagger-ui-standalone-preset.js" charset="UTF-8"> </script>
+                                        
+                    <script>
+                    window.onload = function() {
+                      window.ui = SwaggerUIBundle({
+                        url: "http://localhost:8090/output.json",
+                        dom_id: '#swagger-ui',
+                        deepLinking: true,
+                        presets: [
+                          SwaggerUIBundle.presets.apis,
+                          SwaggerUIStandalonePreset
+                        ],
+                        plugins: [
+                          SwaggerUIBundle.plugins.DownloadUrl
+                        ],
+                        layout: "StandaloneLayout"
+                      });
+                    };
+                    </script>
+                    </body>
+                    </html>
+                    """);
+            writer.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+
     }
     @Override
     public void extensionUnloaded() {
