@@ -1,3 +1,3 @@
 # Burp2Swagger18
 
-pull whole repo and add as project to IDEA
+clone whole repo and add as project to IDEA, then build artifacts
