@@ -177,7 +177,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 addResponseHeaders(messageInfo);
             }
             else if (!requestUrl.getPath().contains(".")){
-                jsonHelper.add2(messageInfo,helpers);
+                jsonHelper.addRequest(messageInfo,helpers);
             }
 
         }

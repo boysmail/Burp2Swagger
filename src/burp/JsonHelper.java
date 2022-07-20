@@ -30,7 +30,6 @@ public class JsonHelper {
     public boolean isDomainSet;
 
     public JsonHelper() {
-
         output = new JsonObject();
         gson = new GsonBuilder().setPrettyPrinting().create();
         //info part
@@ -43,31 +42,27 @@ public class JsonHelper {
 
         //server part
         servers = new JsonArray();
-        //server = new JsonObject();
-        //server.addProperty("url","http://test-domain.com");
 
-        //server.addProperty("description", "Example Description");
-        //servers.add(server);
         output.add("servers", servers);
 
         paths = new JsonObject();
         output.add("paths",paths);
     }
 
-    public void add(IRequestInfo messageInfo){
-        String endpoint = messageInfo.getUrl().getPath();
-        String method = messageInfo.getMethod();
-
-        JsonObject methodJson = new JsonObject();
-        methodJson.addProperty("summary", method + ' ' + endpoint);
-        // somehow add response
-        JsonObject path = new JsonObject();
-        path.add(method.toLowerCase(), methodJson);
-
-        paths.add(endpoint,path);
-
-        //String endpoint = helpers.analyzeRequest(messageInfo).getUrl().getPath();
-    }
+//    public void add(IRequestInfo messageInfo){
+//        String endpoint = messageInfo.getUrl().getPath();
+//        String method = messageInfo.getMethod();
+//
+//        JsonObject methodJson = new JsonObject();
+//        methodJson.addProperty("summary", method + ' ' + endpoint);
+//        // somehow add response
+//        JsonObject path = new JsonObject();
+//        path.add(method.toLowerCase(), methodJson);
+//
+//        paths.add(endpoint,path);
+//
+//        //String endpoint = helpers.analyzeRequest(messageInfo).getUrl().getPath();
+//    }
 
     public String dump(){
         return gson.toJson(output);
@@ -84,7 +79,7 @@ public class JsonHelper {
         //isDomainSet = true;
     }
 
-    public void add2(IHttpRequestResponse messageInfo, IExtensionHelpers helpers) {
+    public void addRequest(IHttpRequestResponse messageInfo, IExtensionHelpers helpers) {
         var req = helpers.analyzeRequest(messageInfo);
         var res = helpers.analyzeRequest(messageInfo.getResponse());
         var res2 = helpers.analyzeResponse(messageInfo.getResponse());
@@ -110,7 +105,7 @@ public class JsonHelper {
         methodJson.addProperty("summary", method + ' ' + endpoint);
 
         if (req.getParameters().size() !=0){
-            AddParameters(req,methodJson, true);
+            addParameters(req,methodJson, true);
         }
 
 
@@ -134,7 +129,7 @@ public class JsonHelper {
         responseContent.addProperty("description","Example Description");
 
         if(res.getParameters().size() != 0){
-            AddParameters(res,responseContent, false);
+            addParameters(res,responseContent, false);
         }
 
 
@@ -171,7 +166,7 @@ public class JsonHelper {
 //        }
 
         paths.add(endpoint, path);
-        SaveToFile();
+        saveToFile();
         // TODO:
         // support for 2 methods on one path
         // support for 2 response codes on 1 method
@@ -179,7 +174,7 @@ public class JsonHelper {
         // support multiple servers
     }
 
-    public void SaveToFile(){
+    public void saveToFile(){
         try{
             //System.out.println("Writing to file");
             Writer writer = Files.newBufferedWriter(Paths.get("burp2swagger_out/output.json"));
@@ -194,7 +189,7 @@ public class JsonHelper {
 
     }
 
-    public void AddParameters(IRequestInfo req, JsonObject holder, boolean isRequest){
+    public void addParameters(IRequestInfo req, JsonObject holder, boolean isRequest){
 
         // крч body запроса и ответ генерируются схожим образом
         // поэтому возможно стоит перенести это все в отдельную функцию
