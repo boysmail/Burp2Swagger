@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Objects;
 
 import com.google.gson.JsonObject;
 
@@ -97,7 +98,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
         File f = new File("burp2swagger_out/index.html");
         if (!f.exists() && f.getParentFile().mkdirs()){
-            DropHtml();
+            dropHtml();
         }
 
 
@@ -119,14 +120,14 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
     @Override
     public void processHttpMessage(int toolFlag, boolean messageIsRequest, IHttpRequestResponse messageInfo) {
-        var RequestUrl = helpers.analyzeRequest(messageInfo).getUrl();
-        if (messageIsRequest && callbacks.isInScope(RequestUrl)){ //&& callbacks.isInScope(RequestUrl)
+        var requestUrl = helpers.analyzeRequest(messageInfo).getUrl();
+        if (messageIsRequest&& callbacks.isInScope(requestUrl)){ //&& callbacks.isInScope(requestUrl)
             // debug
             stdout.println("messGot in scope request to " + messageInfo.getHttpService());
             stdout.println("mess2Got in scope request to " + messageInfo.getHttpService().toString());
-            stdout.println("help "+ RequestUrl);
-            stdout.println("help "+ RequestUrl.getProtocol() + "://" + RequestUrl.getHost());
-            stdout.println("help "+ RequestUrl.getPath());
+            stdout.println("help "+ requestUrl);
+            stdout.println("help "+ requestUrl.getProtocol() + "://" + requestUrl.getHost());
+            stdout.println("help "+ requestUrl.getPath());
             stdout.println("help "+ helpers.analyzeRequest(messageInfo).getMethod());
             //stdout.println("1" + helpers.analyzeResponse(messageInfo.getResponse()).getStatusCode());
             stdout.println();
@@ -134,10 +135,11 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
             //if (!jsonHelper.isDomainSet){
             // checking for known ports
-            if (RequestUrl.getPort() == 80 || RequestUrl.getPort() == 443){
-                jsonHelper.setDomain(RequestUrl.getProtocol() + "://" + RequestUrl.getHost());
+            // TODO : probably don't include localhost:8090 as domain
+            if (requestUrl.getPort() == 80 || requestUrl.getPort() == 443){
+                jsonHelper.setDomain(requestUrl.getProtocol() + "://" + requestUrl.getHost());
             } else {
-                jsonHelper.setDomain(RequestUrl.getProtocol() + "://" + RequestUrl.getHost() + ":" + RequestUrl.getPort());
+                jsonHelper.setDomain(requestUrl.getProtocol() + "://" + requestUrl.getHost() + ":" + requestUrl.getPort());
             }
 
             //}
@@ -146,10 +148,11 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             //jsonHelper.add(helpers.analyzeRequest(messageInfo));
             //textArea.append(helpers.analyzeRequest(messageInfo).getUrl().getHost() + "\n");
         }
-        else if (!messageIsRequest && callbacks.isInScope(RequestUrl)){
+        else if (!messageIsRequest && callbacks.isInScope(requestUrl)){
             // debug
             var responseParams = helpers.analyzeRequest(messageInfo.getResponse()).getParameters();
             var requestParams = helpers.analyzeRequest(messageInfo.getRequest()).getParameters();
+            var request = helpers.analyzeRequest(messageInfo.getRequest());
             stdout.println("response ----------");
             for (IParameter responseParam : responseParams) {
                 stdout.println(responseParam.getName() + " = " + responseParam.getValue() + " pb " + responseParam.getType());
@@ -168,7 +171,15 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             stdout.println("response "+ helpers.analyzeResponse(messageInfo.getResponse()).getStatusCode());
 
             // Todo: check ending of each endpoint to blacklist .js .css etc ()
-            jsonHelper.add2(messageInfo,helpers);
+
+
+            if (request.getHeaders().contains("Origin: http://localhost:8090")){
+                addResponseHeaders(messageInfo);
+            }
+            else if (!requestUrl.getPath().contains(".")){
+                jsonHelper.add2(messageInfo,helpers);
+            }
+
         }
 
     }
@@ -187,7 +198,21 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     public IExtensionHelpers getHelpers(){
         return helpers;
     }
-    public void DropHtml() {
+
+    public void addResponseHeaders(IHttpRequestResponse messageInfo){
+        var response = messageInfo.getResponse();
+        var responseStr = callbacks.getHelpers().bytesToString(response);
+        var responseParsed = helpers.analyzeResponse(response);
+        var body = responseStr.substring(responseParsed.getBodyOffset());
+        var headers = responseParsed.getHeaders();
+        if (!headers.contains("Access-Control-Allow-Origin: *")){
+            headers.add("Access-Control-Allow-Origin: *");
+        }
+
+        var newResponse = helpers.buildHttpMessage(headers,body.getBytes());
+        messageInfo.setResponse(newResponse);
+    }
+    public void dropHtml() {
         Writer writer;
         try {
             writer = Files.newBufferedWriter(Paths.get("burp2swagger_out/index.html"));
@@ -257,3 +282,4 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         server.stop(0);
     }
 }
+// TODO: ignore requests with dots, check origin before adding header?,refactor
