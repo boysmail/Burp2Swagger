@@ -121,6 +121,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     @Override
     public void processHttpMessage(int toolFlag, boolean messageIsRequest, IHttpRequestResponse messageInfo) {
         var requestUrl = helpers.analyzeRequest(messageInfo).getUrl();
+        var request = helpers.analyzeRequest(messageInfo.getRequest());
         if (messageIsRequest&& callbacks.isInScope(requestUrl)){ //&& callbacks.isInScope(requestUrl)
             // debug
             stdout.println("messGot in scope request to " + messageInfo.getHttpService());
@@ -142,6 +143,10 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 jsonHelper.setDomain(requestUrl.getProtocol() + "://" + requestUrl.getHost() + ":" + requestUrl.getPort());
             }
 
+            if (request.getHeaders().contains("Origin: http://localhost:8090")){
+                addRequestHeaders(messageInfo);
+            }
+
             //}
 
             // THIS WAS UNCOMMENTED
@@ -152,7 +157,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             // debug
             var responseParams = helpers.analyzeRequest(messageInfo.getResponse()).getParameters();
             var requestParams = helpers.analyzeRequest(messageInfo.getRequest()).getParameters();
-            var request = helpers.analyzeRequest(messageInfo.getRequest());
+
             stdout.println("response ----------");
             for (IParameter responseParam : responseParams) {
                 stdout.println(responseParam.getName() + " = " + responseParam.getValue() + " pb " + responseParam.getType());
@@ -172,8 +177,13 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
             // Todo: check ending of each endpoint to blacklist .js .css etc ()
 
+            // TODO: change origin to url
+            // TODO: add body parsing
+            // TODO: parse json body without burp
+            // TODO: experiment with different servers with different files
 
-            if (request.getHeaders().contains("Origin: http://localhost:8090")){
+
+            if (request.getHeaders().contains("Referer: http://localhost:8090/")){
                 addResponseHeaders(messageInfo);
             }
             else if (!requestUrl.getPath().contains(".")){
@@ -199,15 +209,28 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         return helpers;
     }
 
+    public void addRequestHeaders(IHttpRequestResponse messageInfo){
+        var request = messageInfo.getRequest();
+        var requestStr = helpers.bytesToString(request);
+        var requestParsed = helpers.analyzeRequest(messageInfo);
+        var body = requestStr.substring(requestParsed.getBodyOffset());
+        var headers = requestParsed.getHeaders();
+        headers.remove("Origin: http://localhost:8090");
+        headers.add("Origin: "+ requestParsed.getUrl().getProtocol() + "://" + requestParsed.getUrl().getHost());
+
+        var newRequest = helpers.buildHttpMessage(headers,body.getBytes());
+        messageInfo.setRequest(newRequest);
+    }
     public void addResponseHeaders(IHttpRequestResponse messageInfo){
         var response = messageInfo.getResponse();
-        var responseStr = callbacks.getHelpers().bytesToString(response);
+        var responseStr = helpers.bytesToString(response);
         var responseParsed = helpers.analyzeResponse(response);
         var body = responseStr.substring(responseParsed.getBodyOffset());
         var headers = responseParsed.getHeaders();
         if (!headers.contains("Access-Control-Allow-Origin: *")){
             headers.add("Access-Control-Allow-Origin: *");
         }
+        // TODO: check if header with other domain
 
         var newResponse = helpers.buildHttpMessage(headers,body.getBytes());
         messageInfo.setResponse(newResponse);

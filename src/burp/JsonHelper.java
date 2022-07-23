@@ -215,7 +215,7 @@ public class JsonHelper {
         for (IParameter par : pars) {
 
             // TODO: Ask if we should track cookies (probably not)
-            if (par.getType() == IParameter.PARAM_URL){
+            if (par.getType() == IParameter.PARAM_URL) {
                 JsonObject parameter = new JsonObject();
                 parameter.addProperty("name", par.getName());
                 parameter.addProperty("in", "query");
@@ -223,14 +223,14 @@ public class JsonHelper {
 
                 JsonObject schema = new JsonObject();
                 // TODO ask about other stuff
-                try{
+                try {
                     Integer.valueOf(par.getValue());
-                    schema.addProperty("type","integer");
-                }catch (NumberFormatException e){
-                    schema.addProperty("type","string");
+                    schema.addProperty("type", "integer");
+                } catch (NumberFormatException e) {
+                    schema.addProperty("type", "string");
                 }
 
-                parameter.add("schema",schema);
+                parameter.add("schema", schema);
                 parameter.addProperty("example", par.getValue());
 
                 // checks if parameter already exists
@@ -243,33 +243,40 @@ public class JsonHelper {
 
             }
             // body content
-            if (par.getType() == IParameter.PARAM_BODY || par.getType() == IParameter.PARAM_JSON){
+            else if (par.getType() == IParameter.PARAM_BODY) {
+                // text in body
+                JsonObject property = new JsonObject();
+                property.addProperty("example", par.getValue());
 
-                // text in body?
-
+                properties.add(par.getName(), property);
+                schemaBody.add("properties", properties);
+                mimeType.add("schema", schemaBody);
+                content.add("text/plain", mimeType);
+                requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
+                requestBody.add("content", content);
+            } else if (par.getType() == IParameter.PARAM_JSON) {
                 // Json in body
-                if (par.getType() == IParameter.PARAM_JSON){
-                    JsonObject property = new JsonObject();
-                    try{
-                        Integer.valueOf(par.getValue());
-                        property.addProperty("type","integer");
+                JsonObject property = new JsonObject();
+                try {
+                    Integer.valueOf(par.getValue());
+                    property.addProperty("type", "integer");
 
-                    }catch (NumberFormatException e){
-                        property.addProperty("type","string");
-                    }
-                    // TODO ask if we need to add examples to to every property
-                    property.addProperty("example",par.getValue());
-
-                    properties.add(par.getName(),property);
-                    schemaBody.add("properties",properties);
-                    mimeType.add("schema",schemaBody);
-                    content.add("application/json",mimeType);
-                    requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
-                    requestBody.add("content",content);
-
+                } catch (NumberFormatException e) {
+                    property.addProperty("type", "string");
                 }
+                // TODO ask if we need to add examples to to every property
+                property.addProperty("example", par.getValue());
+
+                properties.add(par.getName(), property);
+                schemaBody.add("properties", properties);
+                mimeType.add("schema", schemaBody);
+                content.add("application/json", mimeType);
+                requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
+                requestBody.add("content", content);
 
             }
+
+
 
 
             // add params for request and response
