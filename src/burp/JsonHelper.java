@@ -1,10 +1,7 @@
 package burp;
 
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -222,7 +219,7 @@ public class JsonHelper {
                 parameter.addProperty("description", "parameter " + par.getName());
 
                 JsonObject schema = new JsonObject();
-                // TODO ask about other stuff
+                // TODO ask about other stuff (ans: arrays)
                 try {
                     Integer.valueOf(par.getValue());
                     schema.addProperty("type", "integer");
@@ -246,6 +243,13 @@ public class JsonHelper {
             else if (par.getType() == IParameter.PARAM_BODY) {
                 // text in body
                 JsonObject property = new JsonObject();
+                try {
+                    Integer.valueOf(par.getValue());
+                    property.addProperty("type", "integer");
+
+                } catch (NumberFormatException e) {
+                    property.addProperty("type", "string");
+                }
                 property.addProperty("example", par.getValue());
 
                 properties.add(par.getName(), property);
@@ -256,6 +260,8 @@ public class JsonHelper {
                 requestBody.add("content", content);
             } else if (par.getType() == IParameter.PARAM_JSON) {
                 // Json in body
+                //var json = req.toString().substring(req.getBodyOffset());
+
                 JsonObject property = new JsonObject();
                 try {
                     Integer.valueOf(par.getValue());
@@ -264,7 +270,7 @@ public class JsonHelper {
                 } catch (NumberFormatException e) {
                     property.addProperty("type", "string");
                 }
-                // TODO ask if we need to add examples to to every property
+                // TODO ask if we need to add examples to to every property (ans: we should)
                 property.addProperty("example", par.getValue());
 
                 properties.add(par.getName(), property);

@@ -131,7 +131,6 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             stdout.println("help "+ requestUrl.getPath());
             stdout.println("help "+ helpers.analyzeRequest(messageInfo).getMethod());
             //stdout.println("1" + helpers.analyzeResponse(messageInfo.getResponse()).getStatusCode());
-            stdout.println();
 
 
             //if (!jsonHelper.isDomainSet){
@@ -227,10 +226,15 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         var responseParsed = helpers.analyzeResponse(response);
         var body = responseStr.substring(responseParsed.getBodyOffset());
         var headers = responseParsed.getHeaders();
-        if (!headers.contains("Access-Control-Allow-Origin: *")){
-            headers.add("Access-Control-Allow-Origin: *");
+        for(String header : headers){
+            if (header.startsWith("Access-Control-Allow-Origin:")){
+                headers.remove(header);
+                // TODO: ask if we actually need to use * in ACAO
+                headers.add("Access-Control-Allow-Origin: http://localhost:8090");
+                break;
+            }
         }
-        // TODO: check if header with other domain
+        // TODO: check if header with other domain (done)
 
         var newResponse = helpers.buildHttpMessage(headers,body.getBytes());
         messageInfo.setResponse(newResponse);
@@ -305,4 +309,4 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         server.stop(0);
     }
 }
-// TODO: ignore requests with dots, check origin before adding header?,refactor
+// TODO: ignore requests with dots, check origin before adding header?,refactor (done)
