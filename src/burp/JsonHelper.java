@@ -7,6 +7,9 @@ import java.io.IOException;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 
 public class JsonHelper {
@@ -65,7 +68,7 @@ public class JsonHelper {
         return gson.toJson(output);
     }
 
-    public void setDomain(String requestUrlString) {
+    public void addDomain(String requestUrlString) {
         // Or maybe it's better to just have a list of servers and check without creation of "server"
         server = new JsonObject();
         server.addProperty("url", requestUrlString);
@@ -102,7 +105,7 @@ public class JsonHelper {
         methodJson.addProperty("summary", method + ' ' + endpoint);
 
         if (req.getParameters().size() !=0){
-            addParameters(req,methodJson, true);
+            addParameters(messageInfo, methodJson, true, helpers);
         }
 
 
@@ -126,7 +129,7 @@ public class JsonHelper {
         responseContent.addProperty("description","Example Description");
 
         if(res.getParameters().size() != 0){
-            addParameters(res,responseContent, false);
+            addParameters(messageInfo, responseContent, false, helpers);
         }
 
 
@@ -186,8 +189,14 @@ public class JsonHelper {
 
     }
 
-    public void addParameters(IRequestInfo req, JsonObject holder, boolean isRequest){
-
+    public void addParameters(IHttpRequestResponse messageInfo, JsonObject holder, boolean isRequest, IExtensionHelpers helpers){
+        IRequestInfo req;
+        if (isRequest){
+            req = helpers.analyzeRequest(messageInfo.getRequest());
+        }
+        else {
+            req = helpers.analyzeRequest(messageInfo.getResponse());
+        }
         // крч body запроса и ответ генерируются схожим образом
         // поэтому возможно стоит перенести это все в отдельную функцию
         var pars = req.getParameters();
@@ -208,6 +217,64 @@ public class JsonHelper {
         schemaBody.addProperty("type","object");
         schemaBody.add("properties",properties);
 
+        if (req.getContentType() == IRequestInfo.CONTENT_TYPE_JSON){
+            // parsing JSON ourselves
+            String reqBody;
+            if (isRequest){
+                reqBody = helpers.bytesToString(messageInfo.getRequest()).substring(req.getBodyOffset());
+            }
+            else {
+                reqBody = helpers.bytesToString(messageInfo.getResponse()).substring(req.getBodyOffset());
+            }
+            JsonElement parsedJson = JsonParser.parseString(reqBody);
+            if (parsedJson.isJsonArray()){
+                JsonArray parsedJsonArray = parsedJson.getAsJsonArray();
+                // usually it's a 1 JsonObject inside Json Array
+                // TODO maybe more stuff in json array
+                // like this
+//                for (JsonElement element : parsedJsonArray){
+//                    if (element.isJsonObject()){
+//
+//                    }
+//                }
+                JsonObject parsedJsonObject = parsedJsonArray.get(0).getAsJsonObject();
+                // Copy Json object here
+
+            }
+            else if (parsedJson.isJsonObject()){
+                JsonObject parsedJsonObject = parsedJson.getAsJsonObject();
+
+                JsonObject property = new JsonObject();
+
+                Map<String, Object> attributes = new HashMap<String, Object>();
+                Set<Map.Entry<String, JsonElement>> entrySet = parsedJsonObject.entrySet();
+                for(Map.Entry<String,JsonElement> entry : entrySet){
+                    property = new JsonObject();
+                    if (entry.getValue().isJsonObject()){
+                        property = parseObject(entry.getValue().getAsJsonObject());
+                    } else if (entry.getValue().isJsonArray()) {
+                        property = parseArray(entry.getValue().getAsJsonArray());
+                    } else{
+                        try {
+                            Integer.valueOf(entry.getValue().getAsString());
+                            property.addProperty("type", "integer");
+                        } catch (NumberFormatException e) {
+                            property.addProperty("type", "string");
+                        }
+                        property.addProperty("example", entry.getValue().getAsString());
+                    }
+
+                    properties.add(entry.getKey(), property);
+                    schemaBody.add("properties", properties);
+                    mimeType.add("schema", schemaBody);
+                    content.add("application/json", mimeType);
+                    requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
+                    requestBody.add("content", content);
+
+                }
+
+            }
+        }
 
         for (IParameter par : pars) {
 
@@ -258,29 +325,31 @@ public class JsonHelper {
                 content.add("text/plain", mimeType);
                 requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
                 requestBody.add("content", content);
-            } else if (par.getType() == IParameter.PARAM_JSON) {
-                // Json in body
-                //var json = req.toString().substring(req.getBodyOffset());
-
-                JsonObject property = new JsonObject();
-                try {
-                    Integer.valueOf(par.getValue());
-                    property.addProperty("type", "integer");
-
-                } catch (NumberFormatException e) {
-                    property.addProperty("type", "string");
-                }
-                // TODO ask if we need to add examples to to every property (ans: we should)
-                property.addProperty("example", par.getValue());
-
-                properties.add(par.getName(), property);
-                schemaBody.add("properties", properties);
-                mimeType.add("schema", schemaBody);
-                content.add("application/json", mimeType);
-                requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
-                requestBody.add("content", content);
-
             }
+            //else if (par.getType() == IParameter.PARAM_JSON) {
+//                // Json in body
+//
+//                //var json = req.toString().substring(req.getBodyOffset());
+//                // TODO : fix json arrays bug by parsing it ourselves
+//                JsonObject property = new JsonObject();
+//                try {
+//                    Integer.valueOf(par.getValue());
+//                    property.addProperty("type", "integer");
+//
+//                } catch (NumberFormatException e) {
+//                    property.addProperty("type", "string");
+//                }
+//                // TODO ask if we need to add examples to to every property (ans: we should)
+//                property.addProperty("example", par.getValue());
+//
+//                properties.add(par.getName(), property);
+//                schemaBody.add("properties", properties);
+//                mimeType.add("schema", schemaBody);
+//                content.add("application/json", mimeType);
+//                requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
+//                requestBody.add("content", content);
+
+            //}
 
 
 
@@ -311,5 +380,55 @@ public class JsonHelper {
 
         // TODO known bugs: json arrays https://yandex.ru/bell/api/v1/get-ticker
 
+    }
+    public JsonObject parseObject(JsonObject entryObject){
+        JsonObject holder = new JsonObject();
+        holder.addProperty("type","object");
+        JsonObject properties = new JsonObject();
+        Map<String, Object> attributes = new HashMap<String, Object>();
+        Set<Map.Entry<String, JsonElement>> entrySet = entryObject.entrySet();
+        for(Map.Entry<String,JsonElement> entry : entrySet){
+            JsonObject property = new JsonObject();
+            if (entry.getValue().isJsonObject()){
+                property = parseObject(entry.getValue().getAsJsonObject());
+            } else if (entry.getValue().isJsonArray()) {
+                property = parseArray(entry.getValue().getAsJsonArray());
+            } else{
+                try {
+                    Integer.valueOf(entry.getValue().getAsString());
+                    property.addProperty("type", "integer");
+                } catch (NumberFormatException e) {
+                    property.addProperty("type", "string");
+                }
+                property.addProperty("example", entry.getValue().getAsString());
+            }
+            properties.add(entry.getKey(),property);
+        }
+        holder.add("properties",properties);
+        return holder;
+    }
+    public JsonObject parseArray(JsonArray entryArray){
+        JsonObject holder = new JsonObject();
+        holder.addProperty("type","object");
+        JsonObject properties = new JsonObject();
+        for (var entry : entryArray) {
+            JsonObject property = new JsonObject();
+            if (entry.isJsonObject()){
+                property = parseObject(entry.getAsJsonObject());
+            } else if (entry.isJsonArray()) {
+                property = parseArray(entry.getAsJsonArray());
+            } else{
+                try {
+                    Integer.valueOf(entry.getAsString());
+                    property.addProperty("type", "integer");
+                } catch (NumberFormatException e) {
+                    property.addProperty("type", "string");
+                }
+                property.addProperty("example", entry.getAsString());
+            }
+            properties.add(entry.getAsString(),property);
+        }
+        holder.add("properties",properties);
+        return holder;
     }
 }

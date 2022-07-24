@@ -1,6 +1,7 @@
 package burp;
 
 
+import com.google.gson.JsonParser;
 import com.sun.net.httpserver.*;
 
 import javax.swing.*;
@@ -124,22 +125,25 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         var request = helpers.analyzeRequest(messageInfo.getRequest());
         if (messageIsRequest&& callbacks.isInScope(requestUrl)){ //&& callbacks.isInScope(requestUrl)
             // debug
-            stdout.println("messGot in scope request to " + messageInfo.getHttpService());
-            stdout.println("mess2Got in scope request to " + messageInfo.getHttpService().toString());
-            stdout.println("help "+ requestUrl);
-            stdout.println("help "+ requestUrl.getProtocol() + "://" + requestUrl.getHost());
-            stdout.println("help "+ requestUrl.getPath());
-            stdout.println("help "+ helpers.analyzeRequest(messageInfo).getMethod());
+//            stdout.println("messGot in scope request to " + messageInfo.getHttpService());
+//            stdout.println("mess2Got in scope request to " + messageInfo.getHttpService().toString());
+//            stdout.println("help "+ requestUrl);
+//            stdout.println("help "+ requestUrl.getProtocol() + "://" + requestUrl.getHost());
+//            stdout.println("help "+ requestUrl.getPath());
+//            stdout.println("help "+ helpers.analyzeRequest(messageInfo).getMethod());
             //stdout.println("1" + helpers.analyzeResponse(messageInfo.getResponse()).getStatusCode());
+            //var a = helpers.bytesToString(messageInfo.getRequest()).substring(request.getBodyOffset());
+            //stdout.println("asd"+a);
+            //stdout.println(JsonParser.parseString(a).isJsonArray() + " " + JsonParser.parseString(a).isJsonObject());
 
 
             //if (!jsonHelper.isDomainSet){
             // checking for known ports
             // TODO : probably don't include localhost:8090 as domain
             if (requestUrl.getPort() == 80 || requestUrl.getPort() == 443){
-                jsonHelper.setDomain(requestUrl.getProtocol() + "://" + requestUrl.getHost());
+                jsonHelper.addDomain(requestUrl.getProtocol() + "://" + requestUrl.getHost());
             } else {
-                jsonHelper.setDomain(requestUrl.getProtocol() + "://" + requestUrl.getHost() + ":" + requestUrl.getPort());
+                jsonHelper.addDomain(requestUrl.getProtocol() + "://" + requestUrl.getHost() + ":" + requestUrl.getPort());
             }
 
             if (request.getHeaders().contains("Origin: http://localhost:8090")){
@@ -154,33 +158,33 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         }
         else if (!messageIsRequest && callbacks.isInScope(requestUrl)){
             // debug
-            var responseParams = helpers.analyzeRequest(messageInfo.getResponse()).getParameters();
-            var requestParams = helpers.analyzeRequest(messageInfo.getRequest()).getParameters();
+//            var responseParams = helpers.analyzeRequest(messageInfo.getResponse()).getParameters();
+//            var requestParams = helpers.analyzeRequest(messageInfo.getRequest()).getParameters();
+//
+//            stdout.println("response ----------");
+//            for (IParameter responseParam : responseParams) {
+//                stdout.println(responseParam.getName() + " = " + responseParam.getValue() + " pb " + responseParam.getType());
+//            }
+//            //stdout.println(helpers.analyzeResponse(messageInfo.getResponse()));
+//            stdout.println("----------");
+//            stdout.println("request ----------");
+//            for (IParameter requestParam : requestParams) {
+//                stdout.println(requestParam.getName() + " = " + requestParam.getValue() + " pb " + requestParam.getType());
+//            }
+//
+//            stdout.println("----------");
+//
+//            stdout.println("got params in response " + Arrays.toString(helpers.analyzeRequest(messageInfo.getResponse()).getParameters().toArray()));
+//            stdout.println("got params in request " + helpers.analyzeRequest(messageInfo.getRequest()).getParameters());
+//            stdout.println("response "+ helpers.analyzeResponse(messageInfo.getResponse()).getStatusCode());
 
-            stdout.println("response ----------");
-            for (IParameter responseParam : responseParams) {
-                stdout.println(responseParam.getName() + " = " + responseParam.getValue() + " pb " + responseParam.getType());
-            }
-            //stdout.println(helpers.analyzeResponse(messageInfo.getResponse()));
-            stdout.println("----------");
-            stdout.println("request ----------");
-            for (IParameter requestParam : requestParams) {
-                stdout.println(requestParam.getName() + " = " + requestParam.getValue() + " pb " + requestParam.getType());
-            }
+            // Todo: check ending of each endpoint to blacklist .js .css etc (done)
 
-            stdout.println("----------");
-
-            stdout.println("got params in response " + Arrays.toString(helpers.analyzeRequest(messageInfo.getResponse()).getParameters().toArray()));
-            stdout.println("got params in request " + helpers.analyzeRequest(messageInfo.getRequest()).getParameters());
-            stdout.println("response "+ helpers.analyzeResponse(messageInfo.getResponse()).getStatusCode());
-
-            // Todo: check ending of each endpoint to blacklist .js .css etc ()
-
-            // TODO: change origin to url
-            // TODO: add body parsing
+            // TODO: change origin to url (done)
+            // TODO: add body parsing (done)
             // TODO: parse json body without burp
             // TODO: experiment with different servers with different files
-
+            // TODO: CORS bypass doesn't work with preflights aka OPTIONS [i can't even see them in proxy?]
 
             if (request.getHeaders().contains("Referer: http://localhost:8090/")){
                 addResponseHeaders(messageInfo);
