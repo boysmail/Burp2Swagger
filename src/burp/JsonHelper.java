@@ -67,6 +67,9 @@ public class JsonHelper {
     public String dump(){
         return gson.toJson(output);
     }
+    public JsonObject dumpAsJsonObject(){
+        return output;
+    }
 
     public void addDomain(String requestUrlString) {
         // Or maybe it's better to just have a list of servers and check without creation of "server"
@@ -166,7 +169,8 @@ public class JsonHelper {
 //        }
 
         paths.add(endpoint, path);
-        saveToFile();
+        //saveToFile();
+
         // TODO:
         // support for 2 methods on one path
         // support for 2 response codes on 1 method
