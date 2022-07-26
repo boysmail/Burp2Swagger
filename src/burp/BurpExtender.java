@@ -31,7 +31,8 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     private HttpServer server;
     private JsonHelper jsonHelper;
     private Map<String, JsonHelper> jsonHelpers;
-    private Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private JsonArray htmlHolder = new JsonArray();
 
 
     @Override
@@ -194,7 +195,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
             // TODO: change origin to url (done)
             // TODO: add body parsing (done)
-            // TODO: parse json body without burp
+            // TODO: parse json body without burp (done)
             // TODO: experiment with different servers with different files
             // TODO: CORS bypass doesn't work with preflights aka OPTIONS [i can't even see them in proxy?]
             // TODO: JSON Breaks at yandex.ru/ads/meta/265882
@@ -210,7 +211,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                     jsonHelpers.put(domain,jsonHelper);
                 }
                 jsonHelper.addRequest(messageInfo,helpers);
-                saveToFiles();
+                saveToFiles(domain);
             }
 
 
@@ -218,24 +219,27 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
     }
 
-    private void saveToFiles() {
-        Set<Map.Entry<String, JsonHelper>> entrySet = jsonHelpers.entrySet();
-        JsonArray htmlHolder = new JsonArray();
-        for(Map.Entry<String, JsonHelper> entry : entrySet) {
-            try{
-                JsonObject htmlPart = new JsonObject();
-                htmlPart.addProperty("url", "http://localhost:8090/" + entry.getKey().replace("://","-" ) + ".json");
-                htmlPart.addProperty("name", entry.getKey());
+    private void saveToFiles(String domain) {
+        //TODO: reduce saving amount by checking domain (done)
+        var entry = jsonHelpers.get(domain);
+
+        try{
+
+            JsonObject htmlPart = new JsonObject();
+            htmlPart.addProperty("url", "http://localhost:8090/" + domain.replace("://","-" ) + ".json");
+            htmlPart.addProperty("name", domain);
+            if (!htmlHolder.contains(htmlPart)){
                 htmlHolder.add(htmlPart);
-                System.out.println("Writing to file");
-                Writer writer = Files.newBufferedWriter(Paths.get("burp2swagger_out/"+ entry.getKey().replace("://","-") +".json"));
-                gson.toJson(entry.getValue().dumpAsJsonObject(), writer);
-                writer.close();
             }
-            catch (IOException e){
-                System.out.println("Failed writing");
-                throw new RuntimeException(e);
-            }
+
+            System.out.println("Writing to file");
+            Writer writer = Files.newBufferedWriter(Paths.get("burp2swagger_out/"+ domain.replace("://","-") +".json"));
+            gson.toJson(entry.dumpAsJsonObject(), writer);
+            writer.close();
+        }
+        catch (IOException e){
+            System.out.println("Failed writing");
+            throw new RuntimeException(e);
         }
         dropHtml(htmlHolder);
     }
@@ -276,7 +280,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         for(String header : headers){
             if (header.startsWith("Access-Control-Allow-Origin:")){
                 headers.remove(header);
-                // TODO: ask if we actually need to use * in ACAO
+                // TODO: ask if we actually need to use * in ACAO (no)
                 headers.add("Access-Control-Allow-Origin: http://localhost:8090");
                 break;
             }
