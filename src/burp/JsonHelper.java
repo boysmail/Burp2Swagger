@@ -321,16 +321,49 @@ public class JsonHelper {
                 } catch (NumberFormatException e) {
                     property.addProperty("type", "string");
                 }
+                if(req.getContentType() == 2){
+                    property.addProperty("format","binary");
+                    property.addProperty("example", par.getValue());
+
+                    properties.add(par.getName(), property);
+                    schemaBody.add("properties", properties);
+                    mimeType.add("schema", schemaBody);
+                    content.add("multipart/form-data", mimeType);
+                    requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
+                    requestBody.add("content", content);
+                }
+                else {
+                    property.addProperty("example", par.getValue());
+
+                    properties.add(par.getName(), property);
+                    schemaBody.add("properties", properties);
+                    mimeType.add("schema", schemaBody);
+                    content.add("text/plain", mimeType);
+                    requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
+                    requestBody.add("content", content);
+                }
+
+            }
+            else if (par.getType() == IParameter.PARAM_MULTIPART_ATTR) {
+                JsonObject property = new JsonObject();
+                try {
+                    Integer.valueOf(par.getValue());
+                    property.addProperty("type", "integer");
+
+                } catch (NumberFormatException e) {
+                    property.addProperty("type", "string");
+                }
+                property.addProperty("format","binary");
                 property.addProperty("example", par.getValue());
 
                 properties.add(par.getName(), property);
                 schemaBody.add("properties", properties);
                 mimeType.add("schema", schemaBody);
-                content.add("text/plain", mimeType);
+                content.add("multipart/form-data", mimeType);
                 requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
                 requestBody.add("content", content);
-            }
-            else if (par.getType() == IParameter.PARAM_MULTIPART_ATTR) {
+
+
                 System.out.println(par.getName() + " " + par.getValue() + " " + par.getType());
 
 

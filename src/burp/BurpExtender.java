@@ -205,7 +205,8 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             if (request.getHeaders().contains("Referer: http://localhost:8090/")){
                 addResponseHeaders(messageInfo);
             }
-            else if (!requestUrl.getPath().contains(".")){
+            // TODO add ! back
+            else if (requestUrl.getPath().contains(".")){
                 if (jsonHelpers.containsKey(domain)){
                     jsonHelper = jsonHelpers.get(domain);
                 }
