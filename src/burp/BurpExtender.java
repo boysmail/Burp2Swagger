@@ -153,13 +153,18 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 jsonHelpers.put(domain,jsonHelper);
             }
 
+            if (request.getMethod() == "OPTIONS"){
+                stdout.println("got options");
+                stdout.println(request.getHeaders());
+            }
+
             if (requestUrl.getPort() == 80 || requestUrl.getPort() == 443){
                 jsonHelper.addDomain(domain);
             } else {
                 jsonHelper.addDomain(domain + ":" + requestUrl.getPort());
             }
 
-            if (request.getHeaders().contains("Origin: http://localhost:8090")){
+            if (request.getHeaders().contains("Referer: http://localhost:8090/")){
                 addRequestHeaders(messageInfo);
             }
 
@@ -191,14 +196,12 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 //            stdout.println("got params in request " + helpers.analyzeRequest(messageInfo.getRequest()).getParameters());
 //            stdout.println("response "+ helpers.analyzeResponse(messageInfo.getResponse()).getStatusCode());
 
-            // Todo: check ending of each endpoint to blacklist .js .css etc (done)
 
-            // TODO: change origin to url (done)
-            // TODO: add body parsing (done)
-            // TODO: parse json body without burp (done)
-            // TODO: experiment with different servers with different files
-            // TODO: CORS bypass doesn't work with preflights aka OPTIONS [i can't even see them in proxy?]
+            // TODO: CORS bypass doesn't work with preflights aka OPTIONS (test if works)
             // TODO: JSON Breaks at yandex.ru/ads/meta/265882
+            // TODO: file upload
+
+            // TODO: bug airbnb returns bad content type on preflight
             if (request.getHeaders().contains("Referer: http://localhost:8090/")){
                 addResponseHeaders(messageInfo);
             }
@@ -220,7 +223,6 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     }
 
     private void saveToFiles(String domain) {
-        //TODO: reduce saving amount by checking domain (done)
         var entry = jsonHelpers.get(domain);
 
         try{
@@ -280,13 +282,14 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         for(String header : headers){
             if (header.startsWith("Access-Control-Allow-Origin:")){
                 headers.remove(header);
-                // TODO: ask if we actually need to use * in ACAO (no)
                 headers.add("Access-Control-Allow-Origin: http://localhost:8090");
                 break;
             }
         }
-        // TODO: check if header with other domain (done)
-
+        // Will run if we don't find any ACAO headers in response
+        if (!headers.contains("Access-Control-Allow-Origin: http://localhost:8090")){
+            headers.add("Access-Control-Allow-Origin: http://localhost:8090");
+        }
         var newResponse = helpers.buildHttpMessage(headers,body.getBytes());
         messageInfo.setResponse(newResponse);
     }
@@ -361,4 +364,3 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         server.stop(0);
     }
 }
-// TODO: ignore requests with dots, check origin before adding header?,refactor (done)

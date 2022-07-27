@@ -330,6 +330,11 @@ public class JsonHelper {
                 requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
                 requestBody.add("content", content);
             }
+            else if (par.getType() == IParameter.PARAM_MULTIPART_ATTR) {
+                System.out.println(par.getName() + " " + par.getValue() + " " + par.getType());
+
+
+            }
             //else if (par.getType() == IParameter.PARAM_JSON) {
 //                // Json in body
 //
