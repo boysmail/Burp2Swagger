@@ -281,8 +281,6 @@ public class JsonHelper {
         }
 
         for (IParameter par : pars) {
-
-            // TODO: Ask if we should track cookies (probably not)
             if (par.getType() == IParameter.PARAM_URL) {
                 JsonObject parameter = new JsonObject();
                 parameter.addProperty("name", par.getName());
@@ -321,7 +319,7 @@ public class JsonHelper {
                 } catch (NumberFormatException e) {
                     property.addProperty("type", "string");
                 }
-                if(req.getContentType() == 2){
+                if(req.getContentType() == IRequestInfo.CONTENT_TYPE_MULTIPART){
                     property.addProperty("format","binary");
                     property.addProperty("example", par.getValue());
 
@@ -353,7 +351,7 @@ public class JsonHelper {
                 } catch (NumberFormatException e) {
                     property.addProperty("type", "string");
                 }
-                property.addProperty("format","binary");
+
                 property.addProperty("example", par.getValue());
 
                 properties.add(par.getName(), property);
@@ -472,5 +470,24 @@ public class JsonHelper {
         }
         holder.add("properties",properties);
         return holder;
+    }
+
+    public void addAuth() {
+        // TODO not only bearer
+        var components = new JsonObject();
+        var securitySchemes = new JsonObject();
+        var bearerAuth = new JsonObject();
+        bearerAuth.addProperty("type","http");
+        bearerAuth.addProperty("scheme","bearer");
+
+        securitySchemes.add("bearerAuth", bearerAuth);
+        components.add("securitySchemes",securitySchemes);
+        output.add("components", components);
+
+        var security = new JsonArray();
+        var securityPart = new JsonObject();
+        securityPart.add("bearerAuth", new JsonArray());
+        security.add(securityPart);
+        output.add("security",security);
     }
 }

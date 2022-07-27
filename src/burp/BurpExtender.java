@@ -167,6 +167,13 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             if (request.getHeaders().contains("Referer: http://localhost:8090/")){
                 addRequestHeaders(messageInfo);
             }
+            // TODO: bearer or basic?
+            // TODO: probably unoptimised
+            for (var header :request.getHeaders()){
+                if (header.startsWith("Authorization:")){
+                    jsonHelper.addAuth();
+                }
+            }
 
             //}
 
@@ -206,7 +213,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 addResponseHeaders(messageInfo);
             }
             // TODO add ! back
-            else if (requestUrl.getPath().contains(".")){
+            else if (!requestUrl.getPath().contains(".")){
                 if (jsonHelpers.containsKey(domain)){
                     jsonHelper = jsonHelpers.get(domain);
                 }
