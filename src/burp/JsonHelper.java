@@ -67,6 +67,9 @@ public class JsonHelper {
     public String dump(){
         return gson.toJson(output);
     }
+    public JsonObject dumpAsJsonObject(){
+        return output;
+    }
 
     public void addDomain(String requestUrlString) {
         // Or maybe it's better to just have a list of servers and check without creation of "server"
@@ -166,7 +169,8 @@ public class JsonHelper {
 //        }
 
         paths.add(endpoint, path);
-        saveToFile();
+        //saveToFile();
+
         // TODO:
         // support for 2 methods on one path
         // support for 2 response codes on 1 method
@@ -277,8 +281,6 @@ public class JsonHelper {
         }
 
         for (IParameter par : pars) {
-
-            // TODO: Ask if we should track cookies (probably not)
             if (par.getType() == IParameter.PARAM_URL) {
                 JsonObject parameter = new JsonObject();
                 parameter.addProperty("name", par.getName());
@@ -317,14 +319,52 @@ public class JsonHelper {
                 } catch (NumberFormatException e) {
                     property.addProperty("type", "string");
                 }
+                if(req.getContentType() == IRequestInfo.CONTENT_TYPE_MULTIPART){
+                    property.addProperty("format","binary");
+                    property.addProperty("example", par.getValue());
+
+                    properties.add(par.getName(), property);
+                    schemaBody.add("properties", properties);
+                    mimeType.add("schema", schemaBody);
+                    content.add("multipart/form-data", mimeType);
+                    requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
+                    requestBody.add("content", content);
+                }
+                else {
+                    property.addProperty("example", par.getValue());
+
+                    properties.add(par.getName(), property);
+                    schemaBody.add("properties", properties);
+                    mimeType.add("schema", schemaBody);
+                    content.add("text/plain", mimeType);
+                    requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
+                    requestBody.add("content", content);
+                }
+
+            }
+            else if (par.getType() == IParameter.PARAM_MULTIPART_ATTR) {
+                JsonObject property = new JsonObject();
+                try {
+                    Integer.valueOf(par.getValue());
+                    property.addProperty("type", "integer");
+
+                } catch (NumberFormatException e) {
+                    property.addProperty("type", "string");
+                }
+
                 property.addProperty("example", par.getValue());
 
                 properties.add(par.getName(), property);
                 schemaBody.add("properties", properties);
                 mimeType.add("schema", schemaBody);
-                content.add("text/plain", mimeType);
+                content.add("multipart/form-data", mimeType);
                 requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
                 requestBody.add("content", content);
+
+
+                System.out.println(par.getName() + " " + par.getValue() + " " + par.getType());
+
+
             }
             //else if (par.getType() == IParameter.PARAM_JSON) {
 //                // Json in body
@@ -430,5 +470,24 @@ public class JsonHelper {
         }
         holder.add("properties",properties);
         return holder;
+    }
+
+    public void addAuth() {
+        // TODO not only bearer
+        var components = new JsonObject();
+        var securitySchemes = new JsonObject();
+        var bearerAuth = new JsonObject();
+        bearerAuth.addProperty("type","http");
+        bearerAuth.addProperty("scheme","bearer");
+
+        securitySchemes.add("bearerAuth", bearerAuth);
+        components.add("securitySchemes",securitySchemes);
+        output.add("components", components);
+
+        var security = new JsonArray();
+        var securityPart = new JsonObject();
+        securityPart.add("bearerAuth", new JsonArray());
+        security.add(securityPart);
+        output.add("security",security);
     }
 }

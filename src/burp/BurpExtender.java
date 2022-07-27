@@ -1,7 +1,7 @@
 package burp;
 
 
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import com.sun.net.httpserver.*;
 
 import javax.swing.*;
@@ -16,10 +16,7 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Objects;
-
-import com.google.gson.JsonObject;
+import java.util.*;
 
 public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtensionStateListener{
     private IBurpExtenderCallbacks callbacks;
@@ -33,6 +30,9 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     private JsonObject obj;
     private HttpServer server;
     private JsonHelper jsonHelper;
+    private Map<String, JsonHelper> jsonHelpers;
+    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private JsonArray htmlHolder = new JsonArray();
 
 
     @Override
@@ -99,7 +99,8 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
         File f = new File("burp2swagger_out/index.html");
         if (!f.exists() && f.getParentFile().mkdirs()){
-            dropHtml();
+            // TODO FIX
+            //dropHtml();
         }
 
 
@@ -113,16 +114,19 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             stdout.println("port 8090 in use");
         }
 
-        jsonHelper = new JsonHelper();
+        jsonHelpers = new HashMap<>();
+
+        //jsonHelper = new JsonHelper();
 
         stdout.println("This is a Hello World app!");
-        stdout.println(jsonHelper.dump());
+        //stdout.println(jsonHelper.dump());
     }
 
     @Override
     public void processHttpMessage(int toolFlag, boolean messageIsRequest, IHttpRequestResponse messageInfo) {
         var requestUrl = helpers.analyzeRequest(messageInfo).getUrl();
         var request = helpers.analyzeRequest(messageInfo.getRequest());
+        var domain = requestUrl.getProtocol() + "://" + requestUrl.getHost();
         if (messageIsRequest&& callbacks.isInScope(requestUrl)){ //&& callbacks.isInScope(requestUrl)
             // debug
 //            stdout.println("messGot in scope request to " + messageInfo.getHttpService());
@@ -140,14 +144,35 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             //if (!jsonHelper.isDomainSet){
             // checking for known ports
             // TODO : probably don't include localhost:8090 as domain
-            if (requestUrl.getPort() == 80 || requestUrl.getPort() == 443){
-                jsonHelper.addDomain(requestUrl.getProtocol() + "://" + requestUrl.getHost());
-            } else {
-                jsonHelper.addDomain(requestUrl.getProtocol() + "://" + requestUrl.getHost() + ":" + requestUrl.getPort());
+
+            if (jsonHelpers.containsKey(domain)){
+                jsonHelper = jsonHelpers.get(domain);
+            }
+            else {
+                jsonHelper = new JsonHelper();
+                jsonHelpers.put(domain,jsonHelper);
             }
 
-            if (request.getHeaders().contains("Origin: http://localhost:8090")){
+            if (request.getMethod() == "OPTIONS"){
+                stdout.println("got options");
+                stdout.println(request.getHeaders());
+            }
+
+            if (requestUrl.getPort() == 80 || requestUrl.getPort() == 443){
+                jsonHelper.addDomain(domain);
+            } else {
+                jsonHelper.addDomain(domain + ":" + requestUrl.getPort());
+            }
+
+            if (request.getHeaders().contains("Referer: http://localhost:8090/")){
                 addRequestHeaders(messageInfo);
+            }
+            // TODO: bearer or basic?
+            // TODO: probably unoptimised
+            for (var header :request.getHeaders()){
+                if (header.startsWith("Authorization:")){
+                    jsonHelper.addAuth();
+                }
             }
 
             //}
@@ -178,23 +203,55 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 //            stdout.println("got params in request " + helpers.analyzeRequest(messageInfo.getRequest()).getParameters());
 //            stdout.println("response "+ helpers.analyzeResponse(messageInfo.getResponse()).getStatusCode());
 
-            // Todo: check ending of each endpoint to blacklist .js .css etc (done)
 
-            // TODO: change origin to url (done)
-            // TODO: add body parsing (done)
-            // TODO: parse json body without burp
-            // TODO: experiment with different servers with different files
-            // TODO: CORS bypass doesn't work with preflights aka OPTIONS [i can't even see them in proxy?]
+            // TODO: CORS bypass doesn't work with preflights aka OPTIONS (test if works)
+            // TODO: JSON Breaks at yandex.ru/ads/meta/265882
+            // TODO: file upload
 
+            // TODO: bug airbnb returns bad content type on preflight
             if (request.getHeaders().contains("Referer: http://localhost:8090/")){
                 addResponseHeaders(messageInfo);
             }
+            // TODO add ! back
             else if (!requestUrl.getPath().contains(".")){
+                if (jsonHelpers.containsKey(domain)){
+                    jsonHelper = jsonHelpers.get(domain);
+                }
+                else {
+                    jsonHelper = new JsonHelper();
+                    jsonHelpers.put(domain,jsonHelper);
+                }
                 jsonHelper.addRequest(messageInfo,helpers);
+                saveToFiles(domain);
             }
+
 
         }
 
+    }
+
+    private void saveToFiles(String domain) {
+        var entry = jsonHelpers.get(domain);
+
+        try{
+
+            JsonObject htmlPart = new JsonObject();
+            htmlPart.addProperty("url", "http://localhost:8090/" + domain.replace("://","-" ) + ".json");
+            htmlPart.addProperty("name", domain);
+            if (!htmlHolder.contains(htmlPart)){
+                htmlHolder.add(htmlPart);
+            }
+
+            System.out.println("Writing to file");
+            Writer writer = Files.newBufferedWriter(Paths.get("burp2swagger_out/"+ domain.replace("://","-") +".json"));
+            gson.toJson(entry.dumpAsJsonObject(), writer);
+            writer.close();
+        }
+        catch (IOException e){
+            System.out.println("Failed writing");
+            throw new RuntimeException(e);
+        }
+        dropHtml(htmlHolder);
     }
 
     @Override
@@ -233,17 +290,26 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         for(String header : headers){
             if (header.startsWith("Access-Control-Allow-Origin:")){
                 headers.remove(header);
-                // TODO: ask if we actually need to use * in ACAO
                 headers.add("Access-Control-Allow-Origin: http://localhost:8090");
                 break;
             }
+            if (header.startsWith("Access-Control-Allow-Headers:")){
+                headers.remove(header);
+                headers.add("Access-Control-Allow-Headers: *");
+                break;
+            }
         }
-        // TODO: check if header with other domain (done)
-
+        // Will run if we don't find any ACAO headers in response
+        if (!headers.contains("Access-Control-Allow-Origin: http://localhost:8090")){
+            headers.add("Access-Control-Allow-Origin: http://localhost:8090");
+        }
+        if (!headers.contains("Access-Control-Allow-Headers: *")){
+            headers.add("Access-Control-Allow-Headers: *");
+        }
         var newResponse = helpers.buildHttpMessage(headers,body.getBytes());
         messageInfo.setResponse(newResponse);
     }
-    public void dropHtml() {
+    public void dropHtml(JsonArray htmlHolder) {
         Writer writer;
         try {
             writer = Files.newBufferedWriter(Paths.get("burp2swagger_out/index.html"));
@@ -284,7 +350,8 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                     <script>
                     window.onload = function() {
                       window.ui = SwaggerUIBundle({
-                        url: "http://localhost:8090/output.json",
+                        urls: """+ gson.toJson(htmlHolder) + """
+                        ,
                         dom_id: '#swagger-ui',
                         deepLinking: true,
                         presets: [
@@ -313,4 +380,3 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         server.stop(0);
     }
 }
-// TODO: ignore requests with dots, check origin before adding header?,refactor (done)
