@@ -293,10 +293,18 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 headers.add("Access-Control-Allow-Origin: http://localhost:8090");
                 break;
             }
+            if (header.startsWith("Access-Control-Allow-Headers:")){
+                headers.remove(header);
+                headers.add("Access-Control-Allow-Headers: *");
+                break;
+            }
         }
         // Will run if we don't find any ACAO headers in response
         if (!headers.contains("Access-Control-Allow-Origin: http://localhost:8090")){
             headers.add("Access-Control-Allow-Origin: http://localhost:8090");
+        }
+        if (!headers.contains("Access-Control-Allow-Headers: *")){
+            headers.add("Access-Control-Allow-Headers: *");
         }
         var newResponse = helpers.buildHttpMessage(headers,body.getBytes());
         messageInfo.setResponse(newResponse);
