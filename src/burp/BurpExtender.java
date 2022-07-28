@@ -394,7 +394,31 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             menuItem.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    System.out.println(Arrays.toString(invocation.getSelectedMessages()));
+                    var selectedRequest = helpers.analyzeRequest(invocation.getSelectedMessages()[0]);
+                    var domain = selectedRequest.getUrl().getProtocol() + "://" + selectedRequest.getUrl().getHost();
+                    var sitemap = callbacks.getSiteMap(domain);
+                    if (jsonHelpers.containsKey(domain)){
+                        jsonHelper = jsonHelpers.get(domain);
+                    }
+                    else {
+                        jsonHelper = new JsonHelper();
+                        jsonHelpers.put(domain,jsonHelper);
+                    }
+                    jsonHelper.addDomain(domain);
+
+                    for (IHttpRequestResponse singleMessage : sitemap){
+                        if (singleMessage.getResponse() != null){
+                            if (!helpers.analyzeRequest(singleMessage).getUrl().getPath().contains(".")){
+                                jsonHelper.addRequest(singleMessage,helpers);
+                            }
+
+
+                        }
+
+                    }
+                    saveToFiles(domain);
+                    System.out.println("done");
+
 
                 }
             });
@@ -402,5 +426,16 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             return menuItemList;
         }
         return null;
+    }
+
+    public void addRequestsFromSiteMap(IHttpRequestResponse[] sitemap, JsonHelper jsonHelper){
+//        for (IHttpRequestResponse singleMessage : sitemap){
+//            if (singleMessage.getResponse() != null && helpers){
+//                jsonHelper.addRequest(singleMessage,helpers);
+//
+//            }
+//
+//        }
+
     }
 }

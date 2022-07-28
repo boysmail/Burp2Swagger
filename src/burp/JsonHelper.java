@@ -377,6 +377,7 @@ public class JsonHelper {
 
                     properties.add(par.getName(), property);
                     schemaBody.add("properties", properties);
+                    schemaBody.addProperty("type","object");
                     mimeType.add("schema", schemaBody);
                     content.add("multipart/form-data", mimeType);
                     requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
@@ -387,6 +388,7 @@ public class JsonHelper {
 
                     properties.add(par.getName(), property);
                     schemaBody.add("properties", properties);
+                    schemaBody.addProperty("type","object");
                     mimeType.add("schema", schemaBody);
                     content.add("text/plain", mimeType);
                     requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
@@ -408,6 +410,7 @@ public class JsonHelper {
 
                 properties.add(par.getName(), property);
                 schemaBody.add("properties", properties);
+                schemaBody.addProperty("type","object");
                 mimeType.add("schema", schemaBody);
                 content.add("multipart/form-data", mimeType);
                 requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
