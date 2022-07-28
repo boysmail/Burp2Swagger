@@ -22,6 +22,7 @@ public class JsonHelper {
     JsonObject methods;
     JsonObject responses;
     JsonObject responseContent;
+    JsonObject info = new JsonObject();
     Gson gson;
     String endpoint;
     String method;
@@ -34,9 +35,7 @@ public class JsonHelper {
         gson = new GsonBuilder().setPrettyPrinting().create();
         //info part
         output.addProperty("openapi","3.0.0");
-        JsonObject info = new JsonObject();
-        info.addProperty("title","test");
-        info.addProperty("description","test234");
+
         info.addProperty("version","1.0.0");
         output.add("info", info);
 
@@ -75,6 +74,8 @@ public class JsonHelper {
         // Or maybe it's better to just have a list of servers and check without creation of "server"
         server = new JsonObject();
         server.addProperty("url", requestUrlString);
+        info.addProperty("title",requestUrlString);
+        info.addProperty("description","Url: " + requestUrlString + " Generated with Burp2Swagger");
         if (!servers.contains(server)){
             servers.add(server);
         }

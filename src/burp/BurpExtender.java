@@ -17,8 +17,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.List;
 
-public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtensionStateListener{
+public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtensionStateListener,IContextMenuFactory{
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
     private PrintWriter stdout;
@@ -41,9 +42,9 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         this.helpers = callbacks.getHelpers();
         this.callbacks.registerHttpListener(this);
         this.callbacks.registerExtensionStateListener(this);
+        this.callbacks.registerContextMenuFactory(this);
 
-
-        callbacks.setExtensionName("Test extension Java 18");
+        callbacks.setExtensionName("Burp2Swagger Java 18");
         this.stdout = new PrintWriter(callbacks.getStdout(), true);
 
         //UI tab
@@ -95,7 +96,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             }
         });
 
-        stdout.println(System.getProperty("user.dir"));
+        stdout.println("Server dir: "+ System.getProperty("user.dir") + "/burp2swagger_out/");
 
         File f = new File("burp2swagger_out/index.html");
         if (!f.exists() && f.getParentFile().mkdirs()){
@@ -109,16 +110,16 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 Path.of(System.getProperty("user.dir") + "/burp2swagger_out/"), SimpleFileServer.OutputLevel.VERBOSE);
         try {
             server.start();
-            stdout.println("launching server for swagger on port 8090");
+            stdout.println("Launched server for swagger on port 8090");
         } catch (Exception e) {
-            stdout.println("port 8090 in use");
+            stdout.println("Port 8090 in use");
         }
 
         jsonHelpers = new HashMap<>();
 
         //jsonHelper = new JsonHelper();
 
-        stdout.println("This is a Hello World app!");
+
         //stdout.println(jsonHelper.dump());
     }
 
@@ -226,7 +227,10 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 jsonHelper.addRequest(messageInfo,helpers);
                 saveToFiles(domain);
             }
-
+//            stdout.println("Parameters");
+//            for (var par : helpers.analyzeRequest(messageInfo.getResponse()).getParameters()){
+//                stdout.println("Name: "+ par.getName() + " Value: "+ par.getValue() + " Type "+ par.getType());
+//            }
 
         }
 
@@ -380,5 +384,23 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     @Override
     public void extensionUnloaded() {
         server.stop(0);
+    }
+
+    @Override
+    public List<JMenuItem> createMenuItems(IContextMenuInvocation invocation) {
+        if (invocation.getInvocationContext() == IContextMenuInvocation.CONTEXT_TARGET_SITE_MAP_TREE){
+            ArrayList<JMenuItem> menuItemList = new ArrayList<JMenuItem>();
+            var menuItem = new JMenuItem("Get Json");
+            menuItem.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    System.out.println(Arrays.toString(invocation.getSelectedMessages()));
+
+                }
+            });
+            menuItemList.add(menuItem);
+            return menuItemList;
+        }
+        return null;
     }
 }
