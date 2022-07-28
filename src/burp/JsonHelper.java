@@ -218,8 +218,7 @@ public class JsonHelper {
         JsonObject mimeType = new JsonObject();
         JsonObject schemaBody = new JsonObject();
         JsonObject properties = new JsonObject();
-        schemaBody.addProperty("type","object");
-        schemaBody.add("properties",properties);
+
 
         if (req.getContentType() == IRequestInfo.CONTENT_TYPE_JSON){
             // parsing JSON ourselves
@@ -231,6 +230,8 @@ public class JsonHelper {
                 reqBody = helpers.bytesToString(messageInfo.getResponse()).substring(req.getBodyOffset());
             }
             JsonElement parsedJson = JsonParser.parseString(reqBody);
+            JsonObject property = new JsonObject();
+
             if (parsedJson.isJsonArray()){
                 JsonArray parsedJsonArray = parsedJson.getAsJsonArray();
                 // usually it's a 1 JsonObject inside Json Array
@@ -241,14 +242,48 @@ public class JsonHelper {
 //
 //                    }
 //                }
-                JsonObject parsedJsonObject = parsedJsonArray.get(0).getAsJsonObject();
-                // Copy Json object here
+
+                JsonArray anyOf = new JsonArray();
+                for (var entry : parsedJsonArray) {
+                    property = new JsonObject();
+                    if (entry.isJsonObject()){
+                        property = parseObject(entry.getAsJsonObject());
+                    } else if (entry.isJsonArray()) {
+                        property = parseArray(entry.getAsJsonArray());
+                    }
+                    else if(entry.isJsonNull()){
+                        property.addProperty("type","string");
+                        property.addProperty("example", "null");
+                        property.addProperty("nullable", true);
+                    } else if(entry.getAsJsonPrimitive().isBoolean()){
+                        property.addProperty("type","boolean");
+                        property.addProperty("example", entry.getAsString());
+                    } else{
+                        try {
+                            Integer.valueOf(entry.getAsString());
+                            property.addProperty("type", "integer");
+                        } catch (NumberFormatException e) {
+                            property.addProperty("type", "string");
+                        }
+                        property.addProperty("example", entry.getAsString());
+                    }
+                    // TODO can't getasstring something
+                    anyOf.add(property);
+
+                }
+                properties.add("anyOf", anyOf);
+                schemaBody.add("items",properties);
+                schemaBody.addProperty("type","array");
+                mimeType.add("schema", schemaBody);
+                content.add("application/json", mimeType);
+                requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
+                requestBody.add("content", content);
 
             }
             else if (parsedJson.isJsonObject()){
                 JsonObject parsedJsonObject = parsedJson.getAsJsonObject();
 
-                JsonObject property = new JsonObject();
+                property = new JsonObject();
 
                 Map<String, Object> attributes = new HashMap<String, Object>();
                 Set<Map.Entry<String, JsonElement>> entrySet = parsedJsonObject.entrySet();
@@ -260,6 +295,13 @@ public class JsonHelper {
                                 property = parseObject(entry.getValue().getAsJsonObject());
                             } else if (entry.getValue().isJsonArray()) {
                                 property = parseArray(entry.getValue().getAsJsonArray());
+                            } else if(entry.getValue().isJsonNull()){
+                                property.addProperty("type","string");
+                                property.addProperty("example", "null");
+                                property.addProperty("nullable", true);
+                            } else if(entry.getValue().getAsJsonPrimitive().isBoolean()){
+                                property.addProperty("type","boolean");
+                                property.addProperty("example", entry.getValue().getAsString());
                             } else {
                                 try {
                                     Integer.valueOf(entry.getValue().getAsString());
@@ -272,6 +314,8 @@ public class JsonHelper {
 
                             properties.add(entry.getKey(), property);
                             schemaBody.add("properties", properties);
+                            schemaBody.addProperty("type","object");
+                            schemaBody.add("properties",properties);
                             mimeType.add("schema", schemaBody);
                             content.add("application/json", mimeType);
                             requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
@@ -440,6 +484,13 @@ public class JsonHelper {
                 property = parseObject(entry.getValue().getAsJsonObject());
             } else if (entry.getValue().isJsonArray()) {
                 property = parseArray(entry.getValue().getAsJsonArray());
+            } else if(entry.getValue().isJsonNull()){
+                property.addProperty("type","string");
+                property.addProperty("example", "null");
+                property.addProperty("nullable", true);
+            } else if(entry.getValue().getAsJsonPrimitive().isBoolean()){
+                property.addProperty("type","boolean");
+                property.addProperty("example", entry.getValue().getAsString());
             } else{
                 try {
                     Integer.valueOf(entry.getValue().getAsString());
@@ -456,8 +507,9 @@ public class JsonHelper {
     }
     public JsonObject parseArray(JsonArray entryArray){
         JsonObject holder = new JsonObject();
-        holder.addProperty("type","object");
+        holder.addProperty("type","array");
         JsonObject properties = new JsonObject();
+        JsonArray anyOf = new JsonArray();
         // TODO: var becomes a jsonobject
         for (var entry : entryArray) {
             JsonObject property = new JsonObject();
@@ -465,6 +517,13 @@ public class JsonHelper {
                 property = parseObject(entry.getAsJsonObject());
             } else if (entry.isJsonArray()) {
                 property = parseArray(entry.getAsJsonArray());
+            } else if(entry.isJsonNull()){
+                property.addProperty("type","string");
+                property.addProperty("example", "null");
+                property.addProperty("nullable", true);
+            } else if(entry.getAsJsonPrimitive().isBoolean()){
+                property.addProperty("type","boolean");
+                property.addProperty("example", entry.getAsString());
             } else{
                 try {
                     Integer.valueOf(entry.getAsString());
@@ -475,9 +534,11 @@ public class JsonHelper {
                 property.addProperty("example", entry.getAsString());
             }
             // TODO can't getasstring something
-            properties.add(entry.getAsString(),property);
+            anyOf.add(property);
+
         }
-        holder.add("properties",properties);
+        properties.add("anyOf", anyOf);
+        holder.add("items",properties);
         return holder;
     }
 

@@ -167,9 +167,8 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             if (request.getHeaders().contains("Referer: http://localhost:8090/")){
                 addRequestHeaders(messageInfo);
             }
-            // TODO: bearer or basic?
-            // TODO: probably unoptimised
-            // check for future settings
+
+            // TODO: check for future settings
             //for (var header :request.getHeaders()){
             //    if (header.startsWith("Authorization:")){
                     jsonHelper.addAuth();
@@ -210,11 +209,12 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             // TODO: file upload
 
             // TODO: bug airbnb returns bad content type on preflight
+            // TODO: flase and true counted as string, but should be bool
             if (request.getHeaders().contains("Referer: http://localhost:8090/")){
                 addResponseHeaders(messageInfo);
             }
             // TODO add ! back
-            // TODO check if there should be else if
+            // TODO check if there should be "else if"
             if (!requestUrl.getPath().contains(".")){
                 if (jsonHelpers.containsKey(domain)){
                     jsonHelper = jsonHelpers.get(domain);
