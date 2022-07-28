@@ -169,11 +169,12 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             }
             // TODO: bearer or basic?
             // TODO: probably unoptimised
-            for (var header :request.getHeaders()){
-                if (header.startsWith("Authorization:")){
+            // check for future settings
+            //for (var header :request.getHeaders()){
+            //    if (header.startsWith("Authorization:")){
                     jsonHelper.addAuth();
-                }
-            }
+            //    }
+            //}
 
             //}
 
@@ -213,7 +214,8 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 addResponseHeaders(messageInfo);
             }
             // TODO add ! back
-            else if (!requestUrl.getPath().contains(".")){
+            // TODO check if there should be else if
+            if (!requestUrl.getPath().contains(".")){
                 if (jsonHelpers.containsKey(domain)){
                     jsonHelper = jsonHelpers.get(domain);
                 }

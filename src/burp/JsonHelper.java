@@ -252,28 +252,35 @@ public class JsonHelper {
 
                 Map<String, Object> attributes = new HashMap<String, Object>();
                 Set<Map.Entry<String, JsonElement>> entrySet = parsedJsonObject.entrySet();
-                for(Map.Entry<String,JsonElement> entry : entrySet){
-                    property = new JsonObject();
-                    if (entry.getValue().isJsonObject()){
-                        property = parseObject(entry.getValue().getAsJsonObject());
-                    } else if (entry.getValue().isJsonArray()) {
-                        property = parseArray(entry.getValue().getAsJsonArray());
-                    } else{
-                        try {
-                            Integer.valueOf(entry.getValue().getAsString());
-                            property.addProperty("type", "integer");
-                        } catch (NumberFormatException e) {
-                            property.addProperty("type", "string");
-                        }
-                        property.addProperty("example", entry.getValue().getAsString());
-                    }
 
-                    properties.add(entry.getKey(), property);
-                    schemaBody.add("properties", properties);
-                    mimeType.add("schema", schemaBody);
-                    content.add("application/json", mimeType);
-                    requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
-                    requestBody.add("content", content);
+                    for(Map.Entry<String,JsonElement> entry : entrySet){
+                        try {
+                            property = new JsonObject();
+                            if (entry.getValue().isJsonObject()) {
+                                property = parseObject(entry.getValue().getAsJsonObject());
+                            } else if (entry.getValue().isJsonArray()) {
+                                property = parseArray(entry.getValue().getAsJsonArray());
+                            } else {
+                                try {
+                                    Integer.valueOf(entry.getValue().getAsString());
+                                    property.addProperty("type", "integer");
+                                } catch (NumberFormatException e) {
+                                    property.addProperty("type", "string");
+                                }
+                                property.addProperty("example", entry.getValue().getAsString());
+                            }
+
+                            properties.add(entry.getKey(), property);
+                            schemaBody.add("properties", properties);
+                            mimeType.add("schema", schemaBody);
+                            content.add("application/json", mimeType);
+                            requestBody.addProperty("description", "Body content for " + method + " " + endpoint);
+                            requestBody.add("content", content);
+                        }
+                        catch (java.lang.UnsupportedOperationException e){
+                            System.out.println("error " + e + " on url " + helpers.analyzeRequest(messageInfo).getUrl().toString() + " and par "+ entry);
+                        }
+
 
                 }
 
@@ -451,6 +458,7 @@ public class JsonHelper {
         JsonObject holder = new JsonObject();
         holder.addProperty("type","object");
         JsonObject properties = new JsonObject();
+        // TODO: var becomes a jsonobject
         for (var entry : entryArray) {
             JsonObject property = new JsonObject();
             if (entry.isJsonObject()){
@@ -466,6 +474,7 @@ public class JsonHelper {
                 }
                 property.addProperty("example", entry.getAsString());
             }
+            // TODO can't getasstring something
             properties.add(entry.getAsString(),property);
         }
         holder.add("properties",properties);
@@ -479,15 +488,23 @@ public class JsonHelper {
         var bearerAuth = new JsonObject();
         bearerAuth.addProperty("type","http");
         bearerAuth.addProperty("scheme","bearer");
+        var basicAuth = new JsonObject();
+        basicAuth.addProperty("type","http");
+        basicAuth.addProperty("scheme", "basic");
 
+        securitySchemes.add("basicAuth", basicAuth);
         securitySchemes.add("bearerAuth", bearerAuth);
         components.add("securitySchemes",securitySchemes);
         output.add("components", components);
 
         var security = new JsonArray();
         var securityPart = new JsonObject();
+        securityPart.add("basicAuth", new JsonArray());
+        security.add(securityPart);
+        securityPart = new JsonObject();
         securityPart.add("bearerAuth", new JsonArray());
         security.add(securityPart);
+
         output.add("security",security);
     }
 }
