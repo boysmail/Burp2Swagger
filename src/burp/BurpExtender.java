@@ -405,7 +405,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                         jsonHelpers.put(domain,jsonHelper);
                     }
                     jsonHelper.addDomain(domain);
-
+                    jsonHelper.addAuth();
                     for (IHttpRequestResponse singleMessage : sitemap){
                         if (singleMessage.getResponse() != null){
                             if (!helpers.analyzeRequest(singleMessage).getUrl().getPath().contains(".")){
