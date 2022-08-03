@@ -5,7 +5,6 @@ import com.google.gson.*;
 import com.sun.net.httpserver.*;
 
 import javax.swing.*;
-import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
@@ -19,16 +18,15 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.List;
 
-public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtensionStateListener,IContextMenuFactory{
+public class BurpExtender implements IBurpExtender, IHttpListener, IExtensionStateListener,IContextMenuFactory{
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
     private PrintWriter stdout;
-    private JPanel panel;
+    // private JPanel panel;
     // private JSplitPane splitPane1;
-    private JButton button;
-    private JTextArea textArea = new JTextArea("",10,10);
+    // private JButton button;
+    // private JTextArea textArea = new JTextArea("",10,10);
 
-    private JsonObject obj;
     private HttpServer server;
     private JsonHelper jsonHelper;
     private Map<String, JsonHelper> jsonHelpers;
@@ -48,31 +46,31 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         this.stdout = new PrintWriter(callbacks.getStdout(), true);
 
         //UI tab
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                panel = new JPanel();
-                button = new JButton("dump json");
-
-
-
-                //JLabel label = new JLabel("Requested URLs:");
-                JTextArea textArea = new JTextArea("",10,10);
-                button.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        textArea.setText(jsonHelper.dump());
-
-                    }
-                });
-                //panel.setBounds(100,100,250,100);
-                //panel.add(label);
-                panel.add(button);
-                panel.add(textArea);
-                textArea.setVisible(true);
-                callbacks.customizeUiComponent(panel);
-
-
+//        SwingUtilities.invokeLater(new Runnable() {
+//            @Override
+//            public void run() {
+//                panel = new JPanel();
+//                button = new JButton("dump json");
+//
+//
+//
+//                JLabel label = new JLabel("Requested URLs:");
+//                JTextArea textArea = new JTextArea("",10,10);
+//                button.addActionListener(new ActionListener() {
+//                    @Override
+//                    public void actionPerformed(ActionEvent e) {
+//                        textArea.setText(jsonHelper.dump());
+//
+//                    }
+//                });
+//                panel.setBounds(100,100,250,100);
+//                panel.add(label);
+//                panel.add(button);
+//                panel.add(textArea);
+//                textArea.setVisible(true);
+//                callbacks.customizeUiComponent(panel);
+//
+//
 //                // second variant
 //                // setup panels
 //                JLabel label1 = new JLabel("Requested URLs:");
@@ -90,18 +88,17 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 //                splitPane1.setVisible(true);
 //                callbacks.customizeUiComponent(splitPane);
 //                callbacks.customizeUiComponent(splitPane1);
-
-
-                callbacks.addSuiteTab(BurpExtender.this);
-            }
-        });
+//
+//
+//                callbacks.addSuiteTab(BurpExtender.this);
+//            }
+//        });
 
         stdout.println("Server dir: "+ System.getProperty("user.dir") + "/burp2swagger_out/");
 
         File f = new File("burp2swagger_out/index.html");
-        if (!f.exists() && f.getParentFile().mkdirs()){
-            // TODO FIX
-            //dropHtml();
+        if (!f.exists()){
+            f.getParentFile().mkdirs();
         }
 
 
@@ -115,6 +112,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             stdout.println("Port 8090 in use");
         }
 
+        stdout.println("Visit any in-scope website and then check localhost:8090 or add them from site map.");
         jsonHelpers = new HashMap<>();
 
         //jsonHelper = new JsonHelper();
@@ -154,7 +152,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 jsonHelpers.put(domain,jsonHelper);
             }
 
-            if (request.getMethod() == "OPTIONS"){
+            if (request.getMethod().equals("OPTIONS")){
                 stdout.println("got options");
                 stdout.println(request.getHeaders());
             }
@@ -260,16 +258,16 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         dropHtml(htmlHolder);
     }
 
-    @Override
-    public String getTabCaption() {
-        return "Test Tab";
-    }
-
-    @Override
-    public Component getUiComponent() {
-        //return splitPane1;
-        return panel;
-    }
+//    @Override
+//    public String getTabCaption() {
+//        return "Test Tab";
+//    }
+//
+//    @Override
+//    public Component getUiComponent() {
+//        //return splitPane1;
+//        return panel;
+//    }
 
     public IExtensionHelpers getHelpers(){
         return helpers;
@@ -356,7 +354,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                     <script>
                     window.onload = function() {
                       window.ui = SwaggerUIBundle({
-                        urls: """+ gson.toJson(htmlHolder) + """
+                        urls:"""+ gson.toJson(htmlHolder) + """
                         ,
                         dom_id: '#swagger-ui',
                         deepLinking: true,
@@ -389,7 +387,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     @Override
     public List<JMenuItem> createMenuItems(IContextMenuInvocation invocation) {
         if (invocation.getInvocationContext() == IContextMenuInvocation.CONTEXT_TARGET_SITE_MAP_TREE){
-            ArrayList<JMenuItem> menuItemList = new ArrayList<JMenuItem>();
+            ArrayList<JMenuItem> menuItemList = new ArrayList<>();
             var menuItem = new JMenuItem("Get Json");
             menuItem.addActionListener(new ActionListener() {
                 @Override
@@ -411,31 +409,15 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                             if (!helpers.analyzeRequest(singleMessage).getUrl().getPath().contains(".")){
                                 jsonHelper.addRequest(singleMessage,helpers);
                             }
-
-
                         }
-
                     }
                     saveToFiles(domain);
                     System.out.println("done");
-
-
                 }
             });
             menuItemList.add(menuItem);
             return menuItemList;
         }
         return null;
-    }
-
-    public void addRequestsFromSiteMap(IHttpRequestResponse[] sitemap, JsonHelper jsonHelper){
-//        for (IHttpRequestResponse singleMessage : sitemap){
-//            if (singleMessage.getResponse() != null && helpers){
-//                jsonHelper.addRequest(singleMessage,helpers);
-//
-//            }
-//
-//        }
-
     }
 }

@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -284,9 +283,7 @@ public class JsonHelper {
             else if (parsedJson.isJsonObject()){
                 JsonObject parsedJsonObject = parsedJson.getAsJsonObject();
 
-                property = new JsonObject();
 
-                Map<String, Object> attributes = new HashMap<String, Object>();
                 Set<Map.Entry<String, JsonElement>> entrySet = parsedJsonObject.entrySet();
 
                     for(Map.Entry<String,JsonElement> entry : entrySet){
@@ -480,7 +477,6 @@ public class JsonHelper {
         JsonObject holder = new JsonObject();
         holder.addProperty("type","object");
         JsonObject properties = new JsonObject();
-        Map<String, Object> attributes = new HashMap<String, Object>();
         Set<Map.Entry<String, JsonElement>> entrySet = entryObject.entrySet();
         for(Map.Entry<String,JsonElement> entry : entrySet){
             JsonObject property = new JsonObject();
